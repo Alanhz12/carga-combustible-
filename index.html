@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transporte Cardaci - Sistema de Vales</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-gas-pump"></i>
+                <h1>Transporte Cardaci - Sistema de Vales</h1>
+            </div>
+            <div class="date-display">
+                <span id="current-date"></span>
+            </div>
+            <div class="auth-section">
+                <button id="login-btn" class="btn btn-primary">Iniciar Sesión</button>
+                <button id="logout-btn" class="btn btn-secondary" style="display: none;">Cerrar Sesión</button>
+                <span id="user-info" style="margin-left: 10px;"></span>
+            </div>
+        </header>
+        
+        <div class="dashboard">
+            <div class="card stat-card">
+                <i class="fas fa-users"></i>
+                <h3 id="employees-count">0</h3>
+                <p>Empleados</p>
+            </div>
+            <div class="card stat-card">
+                <i class="fas fa-truck"></i>
+                <h3 id="vehicles-count">0</h3>
+                <p>Vehículos</p>
+            </div>
+            <div class="card stat-card">
+                <i class="fas fa-gas-pump"></i>
+                <h3 id="vouchers-count">0</h3>
+                <p>Vales Emitidos</p>
+            </div>
+            <div class="card stat-card">
+                <i class="fas fa-money-bill-wave"></i>
+                <h3 id="total-cost">$0</h3>
+                <p>Total Invertido</p>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="vouchers">Vales de Combustible</div>
+            <div class="tab" data-tab="employees">Gestión de Empleados</div>
+            <div class="tab" data-tab="vehicles">Gestión de Vehículos</div>
+            <div class="tab" data-tab="fuel-prices">Precios de Combustible</div>
+            <div class="tab" data-tab="records">Registro de Vales</div>
+        </div>
+        
+        <!-- Sección de Vales de Combustible -->
+        <div class="tab-content active" id="vouchers-tab">
+            <div class="form-section">
+                <h2 class="section-title">Generar Vale de Combustible</h2>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="driver">Chofer</label>
+                        <select id="driver">
+                            <option value="">Seleccionar chofer</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vehicle">Vehículo</label>
+                        <select id="vehicle">
+                            <option value="">Seleccionar vehículo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fuelType">Tipo de Combustible</label>
+                        <select id="fuelType">
+                            <option value="diesel">Diésel</option>
+                            <option value="premium">Diésel Premium</option>
+                            <option value="Nafta">Nafta super</option>
+                            <option value="Nafta Premium">Nafta Premium</option>
+                            <option value="gas">GNC</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="amount">Litros</label>
+                        <input type="number" id="amount" placeholder="Cantidad en litros">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="station">Estación de Servicio</label>
+                        <select id="station">
+                            <option value="ypf">YPF</option>
+                            <option value="shell">Shell</option>
+                            <option value="axion">Axion</option>
+                            <option value="Puma">Puma</option>
+                            <option value="otros">Otra</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="observations">Observaciones (opcional)</label>
+                        <textarea id="observations" placeholder="Notas adicionales"></textarea>
+                    </div>
+                </div>
+
+                <div class="admin-only">
+                    <h4><i class="fas fa-lock"></i> Información de Administración</h4>
+                    <p>El precio se registra internamente para control pero no aparece en el vale impreso.</p>
+                    <div class="form-group">
+                        <label for="price">Precio por Litro ($) - Solo administración</label>
+                        <input type="number" id="price" step="0.01" placeholder="Precio actual por litro">
+                    </div>
+                </div>
+                
+                <h3 class="section-title">Firma del Playero</h3>
+                <div class="signature-pad">
+                    <canvas id="signatureCanvas"></canvas>
+                    <div class="signature-clear" id="clearSignature">Limpiar</div>
+                </div>
+                
+                <div class="actions">
+                    <button class="btn btn-primary" id="generateVoucher">Generar Vale</button>
+                    <button class="btn btn-secondary" id="resetForm">Limpiar Formulario</button>
+                </div>
+            </div>
+            
+            <div class="voucher-preview no-print" id="voucherPreview" style="display: none;">
+                <div class="voucher-header">
+                    <h2>Transporte Cardaci</h2>
+                    <p>Vale de Combustible</p>
+                    
+                </div>
+                
+                <div class="voucher-details">
+                    <div class="voucher-detail">
+                        <strong>Número de Vale:</strong>
+                        <span id="voucherNumber">VC-2023-00125</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Fecha:</strong>
+                        <span id="voucherDate">15/08/2023</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Chofer:</strong>
+                        <span id="voucherDriver">Juan Pérez</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Vehículo:</strong>
+                        <span id="voucherVehicle">Mercedes-Benz AXK 123</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Combustible:</strong>
+                        <span id="voucherFuel">Diésel</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Litros:</strong>
+                        <span id="voucherAmount">120 L</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Estación de Servicio:</strong>
+                        <span id="voucherStation">YPF</span>
+                    </div>
+                    <div class="voucher-detail">
+                        <strong>Observaciones:</strong>
+                        <span id="voucherObservations">-</span>
+                    </div>
+                </div>
+                
+                <div class="voucher-footer">
+                    <div class="signature-area">
+                        <p>Firma y sello de la estación de servicio</p>
+                        <div class="signature-line">
+                            <img id="voucherSignature" src="" alt="Firma" style="max-height: 50px; display: none;">
+                            <div>..............................................</div>
+                        </div>
+                    </div>
+                    
+                    <div class="signature-area">
+                        <p>Autorizado por: Transporte Cardaci</p>
+                        <div class="signature-line">
+                            <div>..............................................</div>
+                            
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="print-only">
+                    Este vale es válido por 48 horas desde su emisión. No válido para otros fines.
+                </div>
+                
+                <div class="actions no-print">
+                    <button class="btn btn-primary" id="printVoucher">Imprimir Vale</button>
+                    <button class="btn btn-success" id="saveVoucher">Guardar en Sistema</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de Gestión de Empleados -->
+        <div class="tab-content" id="employees-tab">
+            <div class="form-section">
+                <h2 class="section-title">Gestión de Empleados</h2>
+                
+                <div class="tab-submenu">
+                    <button class="active" data-subtab="add-employee">Agregar Empleado</button>
+                    <button data-subtab="view-employees">Ver Empleados</button>
+                </div>
+                
+                <div class="subtab-content active" id="add-employee">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="employee-name">Nombre completo</label>
+                            <input type="text" id="employee-name" placeholder="Nombre y apellido">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="employee-dni">DNI</label>
+                            <input type="text" id="employee-dni" placeholder="Número de documento">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="employee-license">Licencia</label>
+                            <input type="text" id="employee-license" placeholder="Tipo de licencia">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="employee-phone">Teléfono</label>
+                            <input type="tel" id="employee-phone" placeholder="Número de contacto">
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" id="addEmployee">Agregar Empleado</button>
+                    </div>
+                </div>
+                
+                <div class="subtab-content" id="view-employees">
+                    <table class="management-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>DNI</th>
+                                <th>Licencia</th>
+                                <th>Teléfono</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employees-table">
+                            <!-- Los empleados se cargarán aquí dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de Gestión de Vehículos -->
+        <div class="tab-content" id="vehicles-tab">
+            <div class="form-section">
+                <h2 class="section-title">Gestión de Vehículos</h2>
+                
+                <div class="tab-submenu">
+                    <button class="active" data-subtab="add-vehicle">Agregar Vehículo</button>
+                    <button data-subtab="view-vehicles">Ver Vehículos</button>
+                </div>
+                
+                <div class="subtab-content active" id="add-vehicle">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="vehicle-patent">Patente</label>
+                            <input type="text" id="vehicle-patent" placeholder="Patente del vehículo">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vehicle-brand">Marca</label>
+                            <input type="text" id="vehicle-brand" placeholder="Marca del vehículo">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vehicle-model">Modelo</label>
+                            <input type="text" id="vehicle-model" placeholder="Modelo del vehículo">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vehicle-year">Año</label>
+                            <input type="number" id="vehicle-year" placeholder="Año de fabricación">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vehicle-type">Tipo de Vehículo</label>
+                            <select id="vehicle-type">
+                                <option value="camion">Camión</option>
+                                <option value="camioneta">Camioneta</option>
+                                <option value="auto">Automóvil</option>
+                                <option value="maquinaria">Maquinaria</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" id="addVehicle">Agregar Vehículo</button>
+                    </div>
+                </div>
+                
+                <div class="subtab-content" id="view-vehicles">
+                    <table class="management-table">
+                        <thead>
+                            <tr>
+                                <th>Patente</th>
+                                <th>Marca</th>
+                                <th>Modelo</th>
+                                <th>Año</th>
+                                <th>Tipo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vehicles-table">
+                            <!-- Los vehículos se cargarán aquí dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de Precios de Combustible -->
+        <div class="tab-content" id="fuel-prices-tab">
+            <div class="form-section">
+                <h2 class="section-title">Configuración de Precios de Combustible</h2>
+                
+                <div class="price-config">
+                    <h3>Precios Actuales</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="diesel-price">Precio Diésel ($/L)</label>
+                            <input type="number" id="diesel-price" step="0.01" value="890.00">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="premium-price">Precio Diésel Premium ($/L)</label>
+                            <input type="number" id="premium-price" step="0.01" value="950.00">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="nafta-super-price">Precio Nafta Super ($/L)</label>
+                            <input type="number" id="nafta-super-price" step="0.01" value="780.00">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="nafta-premium-price">Precio Nafta Premium ($/L)</label>
+                            <input type="number" id="nafta-premium-price" step="0.01" value="850.00">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="gas-price">Precio GNC ($/m³)</label>
+                            <input type="number" id="gas-price" step="0.01" value="350.00">
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" id="updatePrices">Actualizar Precios</button>
+                    </div>
+                </div>
+                
+                <h3 class="section-title">Historial de Precios</h3>
+                <table class="management-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Diésel ($/L)</th>
+                            <th>Diésel Premium ($/L)</th>
+                            <th>Nafta Super ($/L)</th>
+                            <th>Nafta Premium ($/L)</th>
+                            <th>GNC ($/m³)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="price-history">
+                        <!-- El historial de precios se cargará aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Sección de Registro de Vales -->
+        <div class="tab-content" id="records-tab">
+            <div class="form-section">
+                <h2 class="section-title">Registro de Vales de Combustible</h2>
+                
+                <div class="filters">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="filter-date-from">Desde</label>
+                            <input type="date" id="filter-date-from">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="filter-date-to">Hasta</label>
+                            <input type="date" id="filter-date-to">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="filter-driver">Chofer</label>
+                            <select id="filter-driver">
+                                <option value="">Todos los choferes</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="filter-vehicle">Vehículo</label>
+                            <select id="filter-vehicle">
+                                <option value="">Todos los vehículos</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" id="applyFilters">Aplicar Filtros</button>
+                        <button class="btn btn-secondary" id="resetFilters">Restablecer</button>
+                    </div>
+                </div>
+                
+                <table class="management-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Número de Vale</th>
+                            <th>Chofer</th>
+                            <th>Vehículo</th>
+                            <th>Combustible</th>
+                            <th>Litros</th>
+                            <th>Precio Unitario</th>
+                            <th>Total</th>
+                            <th>Estación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vouchers-table">
+                        <!-- Los vales se cargarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/database.js"></script>
+    <script src="js/signature.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
