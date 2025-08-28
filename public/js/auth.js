@@ -1,4 +1,4 @@
-// Manejo de autenticación
+// Manejo de autenticación simplificado
 document.addEventListener('DOMContentLoaded', function() {
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Iniciar sesión
     loginBtn.addEventListener('click', function() {
-        loginWithGoogle();
+        login();
     });
     
     // Cerrar sesión
@@ -20,46 +20,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Verificar sesión activa
 async function checkSession() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const user = localStorage.getItem('user');
     
-    if (session) {
-        updateUIForLoggedInUser(session.user);
+    if (user) {
+        updateUIForLoggedInUser(JSON.parse(user));
     } else {
         updateUIForLoggedOutUser();
     }
 }
 
-// Iniciar sesión con Google
-async function loginWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-    });
+// Iniciar sesión simplificada
+async function login() {
+    const email = prompt('Por favor, ingrese su email:');
+    if (!email) return;
     
-    if (error) {
-        console.error('Error al iniciar sesión:', error);
-        alert('Error al iniciar sesión: ' + error.message);
-    }
+    // En una app real, aquí verificarías credenciales con el backend
+    const user = { email: email, name: email.split('@')[0] };
+    localStorage.setItem('user', JSON.stringify(user));
+    updateUIForLoggedInUser(user);
 }
 
 // Cerrar sesión
 async function logout() {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-        console.error('Error al cerrar sesión:', error);
-    } else {
-        updateUIForLoggedOutUser();
-    }
+    localStorage.removeItem('user');
+    updateUIForLoggedOutUser();
 }
-
-// Escuchar cambios en el estado de autenticación
-supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-        updateUIForLoggedInUser(session.user);
-    } else if (event === 'SIGNED_OUT') {
-        updateUIForLoggedOutUser();
-    }
-});
 
 // Actualizar UI para usuario autenticado
 function updateUIForLoggedInUser(user) {
